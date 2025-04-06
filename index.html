@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Clickable US Map</title>
+    <title>US Statle</title>
 
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -14,7 +14,7 @@
             <span class="close">&times;</span>
             <h2>Congratulations!</h2>
             <p>You guessed the correct state!</p>
-            <p>It took you: <span id="totalGuesses"></span> this time!</p>
+            <p>It took you: <span id="totalGuesses"></span> guesses this time!</p>
             <p>Average # of gueses: <span id="avgNumOfGuesses"></span></p>
             <p>You have played <span id="timesPlayed"></span> times</p>
         </div>
@@ -245,9 +245,6 @@
          d="m 956.31178,153.05085 -0.29118,-0.19412 0,0.29119 0.29118,-0.0971 z m -2.91189,-2.6207 0.67944,-0.29119 0,-0.38825 -0.67944,0.67944 z m 12.03583,-7.57092 -0.0971,-1.35889 -0.19412,-0.7765 0.29119,2.13539 z m -42.41659,-9.9975 -0.67944,0.29119 -5.5326,1.65007 -1.94126,0.67944 -2.23245,0.67944 -0.7765,0.29119 0,0.29119 0.29118,5.04728 0.29119,4.65903 0.29119,4.27078 0.48532,0.29119 1.74714,-0.48532 7.86211,-2.32951 0.19412,0.48531 13.97709,-5.33847 0.0971,0.19413 1.26182,-0.48532 4.4649,-1.74713 4.27078,5.14434 0,0 0.58238,-0.48531 0.29119,-1.45595 -0.0971,2.32952 0,0 0.97063,0 0.29119,1.16475 0.87357,1.65008 0,0 4.56197,-5.5326 3.78546,1.26182 0.87357,-1.94126 6.21204,-3.30015 -2.62071,-5.14435 0.67945,3.30015 -3.20309,2.42658 -3.59133,0.29119 -7.18267,-7.66799 -3.20309,-4.85315 3.20309,-3.39721 -3.30015,-0.19413 -1.35888,-3.20308 -0.0971,-0.19413 -5.53259,6.01791 -12.22996,4.07666 -3.97959,1.26182 0,0 z"
          style="stroke-width:0.97063118000000004;fill:#f9f9f9" />
          */
-
-        let correctState = 'MA';
-        let gameId = '2';
         let guessedCorectly = false;
         let count = 0;
         let guestList = [];
@@ -256,349 +253,447 @@
         let allTimeScore = 0;
         let hasPlayedToday = false;
         let lastGameIdPlayed = null;
-        let gameIdsPlayed;
+        let gameIdsPlayed = [];
         let lastGameGuesses;
+        let a;
+
+
+
+
+
+
+        let correctState = 'MA';
+        let gameId = 0;
+
+        fetch("https://statele-backend.onrender.com/game")
+            .then(res => res.json())
+            .then(data => {
+                gameId = Number(data.id);
+                console.log("Loaded game:", gameId);
+                a = data.a;
+
+
+
+
+                if (checkCookie('gameIdsPlayed')) {
+                    const raw = getCookie('gameIdsPlayed');
+
+                    try {
+                        const parsed = JSON.parse(raw);
+
+                        if (Array.isArray(parsed)) {
+                            gameIdsPlayed = parsed.map(Number).filter(n => !isNaN(n));
+                        } else {
+                            console.warn("Expected an array in cookie, got:", parsed);
+                        }
+                    } catch (err) {
+                        console.warn("Failed to parse gameIdsPlayed cookie:", err);
+                    }
+                }
+                if (checkCookie('timesPlayed')) {
+                    timesPlayed = getCookie('timesPlayed');
+                }
+                if (checkCookie('allTimeScore')) {
+                    allTimeScore = getCookie('allTimeScore');
+                }
+                //if (checkCookie('hasPlayedToday')) {
+                //  hasPlayedToday = getCookie('hasPlayedToday');
+                //}
+                if (checkCookie('lastGameIdPlayed')) {
+                    lastGameIdPlayed = getCookie('lastGameIdPlayed');
+                }
+
+                
+
+
+                console.log("Gameids played ", gameIdsPlayed);
+                if (gameIdsPlayed.includes(Number(gameId))) {
+                    hasPlayedToday = true;
+                    console.log("Already played! GameId: " + gameId);
+                } else {
+                    hasPlayedToday = false;
+                }
+
+                //Last game guesses 
+
+                if (checkCookie('lastGameGuesses') && hasPlayedToday) {
+                    let raw = getCookie("lastGameGuesses");
+                    let parsedGuesses = raw ? JSON.parse(raw) : [];
+                    count = parsedGuesses.length;
+                    console.log(count);
+                    fillLastGameGuesses(parsedGuesses);
+                } else {
+                    lastGameGuesses = [];
+                }
+
+                if (hasPlayedToday) {
+                    guessedCorectly = true;
+                    showModal();
+                    //goto stats screen
+                }
+            
+
+
+                // Attach event listeners to each state path
+                document.querySelectorAll("path").forEach(state => {
+                    state.addEventListener("click", () => {
+
+                        const stateId = state.getAttribute("id");
+                        const stateName = state.getAttribute("data-name") || stateId;
+                        let correct = null;
+
+                        if (!guessedCorectly || !hasPlayedToday) {
+                            if (state.getAttribute("style") == "stroke-width:0.97063118000000004;fill:#f9f9f9") {
+                                count = count + 1;
+                                const shortestPathSize = findShortestPath(stateId, a);
+                                let pathCount = shortestPathSize.length - 1;
+                                if (shortestPathSize) {
+                                    console.log(`Shortest path from ${stateId} to ${a}: ${pathCount})`);
+                                } else {
+                                    console.log(`No path found from ${stateId} to ${a}.`);
+                                    console.log(`Not correct!`);
+                                }
+/*
+                                //******
+                                ********
+                                FIX NEED TO ADD SHORTEST PATH SIZE FOUND INTO THE BACKEND
+                                OR I COULD JUST MAKE IT SO THE ANSWER IS PASSED WITH THE ID
+*/
+
+
+
+
+
+
+                                //CORRECT
+                                fetch("https://statele-backend.onrender.com/guess", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                        id: gameId,
+                                        guess: stateId
+                                    })
+                                })
+                                    .then(res => res.json())
+                                    .then(data => {
+                                        console.log("Server response:", data);
+                                        if (data.correct) {
+                                            //alert(`🎉 Correct! The answer was ${guess}`);
+                                            //state.style.fill = "#4ade80"; // green
+                                            correct = true;
+
+                                            state.style = "stroke-width:0.97063118000000004;fill:#0f03fc";
+                                            guessedCorectly = true;
+                                            document.getElementById("result").textContent = `Congratulations! You got the correct state: ${stateName}`
+                                            document.getElementById("count").textContent = `It took you ${count} guesses`;
+
+                                            allTimeScore = Number(allTimeScore) + count;
+                                            setCookie('allTimeScore', allTimeScore, 7);
+                                            timesPlayed++;
+                                            setCookie('timesPlayed', timesPlayed, 7);
+                                            document.getElementById("played").textContent = `You have played ${timesPlayed} times`
+                                            lastGameIdPlayed = gameId;
+                                            setCookie('lastGameIdPlayed', lastGameIdPlayed, 7);
+                                            hasPlayedToday = true;
+                                            setCookie('hasPlayedToday', hasPlayedToday, 7);
+
+
+                                            //gameIdsPlayed.push(gameId);
+
+                                            gameIdsPlayed.push(Number(gameId));
+                                            lastGameGuesses.push({ state: stateId, guessNum: count, pathCount: pathCount })
+
+                                            console.log("What am I saving?", lastGameGuesses);
+                                            console.log("As JSON:", JSON.stringify(lastGameGuesses));
+
+                                            setCookie('gameIdsPlayed', JSON.stringify(gameIdsPlayed), 7);
+                                            //setCookie('gameIdsPlayed', JSON.stringify(gameIdsPlayed), 7);
+                                            setCookie("lastGameGuesses", JSON.stringify(lastGameGuesses), 7);
+
+                                            showModal();
+                                            //showModal(10,[1,5,7]);
+
+
+
+
+
+
+
+
+                                        } else {
+                                            //alert("❌ Nope, try again.");
+                                            //state.style.fill = "#f87171"; // red
+                                            correct = false;
+
+
+                                            if (pathCount <= 1) {
+                                                //Next to
+                                                state.style = "stroke-width:0.97063118000000004;fill:#fc0303";
+                                                lastGameGuesses.push({ state: stateId, guessNum: count, pathCount: pathCount })
+                                            } else if (pathCount <= 3) {
+                                                //Within 3
+                                                state.style = "stroke-width:0.97063118000000004;fill:#fc8c03";
+                                                lastGameGuesses.push({ state: stateId, guessNum: count, pathCount: pathCount })
+                                            } else if (pathCount <= 5) {
+                                                //Within 5
+                                                state.style = "stroke-width:0.97063118000000004;fill:#fcd303";
+                                                lastGameGuesses.push({ state: stateId, guessNum: count, pathCount: pathCount })
+                                            } else if (pathCount <= 7) {
+
+                                                state.style = "stroke-width:0.97063118000000004;fill:#e9f542"
+                                                lastGameGuesses.push({ state: stateId, guessNum: count, pathCount: pathCount })
+                                            } else {
+                                                //Within more than 5
+                                                state.style = "stroke-width:0.97063118000000004;fill:#f0ff6e";
+                                                lastGameGuesses.push({ state: stateId, guessNum: count, pathCount: pathCount })
+                                            }
+                                            document.getElementById("result").textContent = `You clicked: ${stateName}`;
+                                            document.getElementById("count").textContent = `Guesses: ${count}`;
+
+
+
+
+
+                                        }
+                                    })
+                                    .catch(err => {
+                                        console.error("Guess failed:", err);
+                                    });
+
+                            } else {
+                                document.getElementById("result").textContent = `You've already guessed that state!`;
+                            }
+                        } else {
+
+                        }
+                    });
+                    state.addEventListener("mousemove", () => {
+                        const stateName = state.getAttribute("data-name") || state.getAttribute("id");
+                        const tooltip = document.getElementById("tooltip");
+
+                        // Set tooltip text and position
+                        tooltip.textContent = stateName;
+                        tooltip.style.left = `${event.pageX + 10}px`;  // Position slightly to the right of the mouse
+                        tooltip.style.top = `${event.pageY - tooltip.offsetHeight - 10}px`;  // Position above the mouse
+                        tooltip.style.display = 'block';
+                    })
+                });
+
+
+
+                function fillLastGameGuesses(array) {
+                    //lastGameGuesses.push({ state: stateId, guessNum: count, pathCount: pathCount })
+                    // Get the default selected state from the SVG
+                    array.forEach(element => {
+                        const stID = element.state;
+                        const guessNumbered = element.guessNum;
+                        const pathCounty = element.pathCount;
+                        //const stylesese = element.get("style");
+                        //let tempStyle = "stroke-width:0.97063118000000004;fill:" + 
+
+                        if (pathCounty < 1) {
+                            //let tempStyle = "stroke-width:0.97063118000000004;fill:" + "#fc0303";
+                            document.getElementById(stID).style.fill = "#0f03fc";
+                        } else if (pathCounty <= 1) {
+                            //Next to
+                            //let tempStyle = "stroke-width:0.97063118000000004;fill:" + "#fc0303";
+                            document.getElementById(stID).style.fill = "#fc0303";
+                        } else if (pathCounty <= 3) {
+                            //Within 3
+                            //let tempStyle = "stroke-width:0.97063118000000004;fill:" + "#fc8c03";
+                            document.getElementById(stID).style.fill = "#fc8c03";
+                        } else if (pathCounty <= 5) {
+                            //Within 5
+                            //let tempStyle = "stroke-width:0.97063118000000004;fill:" + "#fcd303";
+                            document.getElementById(stID).style.fill = "#fcd303";
+                        } else if (pathCounty <= 7) {
+                            //let tempStyle = "stroke-width:0.97063118000000004;fill:" + "#e9f542";
+                            document.getElementById(stID).style.fill = "#e9f542";
+                        } else {
+                            //More than 7
+                            //let tempStyle = "stroke-width:0.97063118000000004;fill:" + "#f0ff6e";
+                            document.getElementById(stID).style.fill = "#f0ff6e";
+                        }
+
+                    });
+                }
+
+
+
+
+                // Simplified adjacency list for the 50 U.S. states (only neighboring states listed)
+                const stateGraph = {
+                    'AL': ['MS', 'TN', 'GA', 'FL'],
+                    'AK': ['WA'],
+                    'AZ': ['CA', 'NV', 'UT', 'CO'],
+                    'AR': ['MO', 'TN', 'MS', 'LA', 'TX', 'OK'],
+                    'CA': ['OR', 'NV', 'AZ', 'HI'],
+                    'CO': ['WY', 'NE', 'KS', 'MO', 'OK', 'AZ', 'NM'],
+                    'CT': ['NY', 'MA', 'RI'],
+                    'DE': ['MD', 'PA', 'NJ'],
+                    'FL': ['AL', 'GA'],
+                    'GA': ['AL', 'FL', 'SC', 'TN', 'NC'],
+                    'HI': ['CA'],
+                    'ID': ['WA', 'OR', 'NV', 'UT', 'WY'],
+                    'IL': ['WI', 'IA', 'MO', 'KY', 'IN'],
+                    'IN': ['MI', 'OH', 'KY', 'IL'],
+                    'IA': ['MN', 'WI', 'IL', 'MO', 'NE'],
+                    'KS': ['NE', 'MO', 'OK', 'CO'],
+                    'KY': ['IN', 'OH', 'WV', 'VA', 'TN', 'MO'],
+                    'LA': ['TX', 'AR', 'MS'],
+                    'ME': ['NH'],
+                    'MD': ['DE', 'PA', 'VA'],
+                    'MA': ['NH', 'RI', 'CT', 'NY'],
+                    'MI': ['WI', 'IN', 'OH'],
+                    'MN': ['ND', 'WI', 'IA', 'SD'],
+                    'MS': ['AL', 'LA', 'AR', 'TN'],
+                    'MO': ['IA', 'NE', 'KS', 'OK', 'AR', 'KY', 'IL'],
+                    'MT': ['ND', 'WY', 'ID'],
+                    'NE': ['SD', 'IA', 'MO', 'KS', 'CO', 'WY'],
+                    'NV': ['OR', 'ID', 'UT', 'AZ', 'CA'],
+                    'NH': ['ME', 'VT', 'MA'],
+                    'NJ': ['PA', 'DE', 'NY'],
+                    'NM': ['CO', 'AZ', 'TX', 'OK'],
+                    'NY': ['PA', 'NJ', 'CT', 'MA', 'VT'],
+                    'NC': ['VA', 'SC', 'GA', 'TN'],
+                    'ND': ['SD', 'MT', 'MN'],
+                    'OH': ['IN', 'KY', 'WV', 'PA', 'MI'],
+                    'OK': ['TX', 'NM', 'CO', 'KS', 'MO', 'AR'],
+                    'OR': ['WA', 'ID', 'NV', 'CA'],
+                    'PA': ['NY', 'NJ', 'DE', 'MD', 'WV', 'OH'],
+                    'RI': ['CT', 'MA'],
+                    'SC': ['NC', 'GA'],
+                    'SD': ['ND', 'MN', 'IA', 'NE', 'WY'],
+                    'TN': ['KY', 'VA', 'NC', 'GA', 'AL', 'MS', 'AR'],
+                    'TX': ['NM', 'OK', 'AR', 'LA'],
+                    'UT': ['ID', 'CO', 'AZ', 'NV'],
+                    'VT': ['NH', 'MA', 'NY'],
+                    'VA': ['MD', 'NC', 'TN', 'KY', 'WV'],
+                    'WA': ['OR', 'ID', 'AK'],
+                    'WV': ['PA', 'MD', 'VA', 'KY', 'OH'],
+                    'WI': ['MN', 'IA', 'IL', 'MI'],
+                    'WY': ['MT', 'SD', 'NE', 'CO', 'UT', 'ID'],
+                };
+
+                // Function to perform BFS and find the shortest path
+                function findShortestPath(startState, targetState) {
+                    // Queue to hold the states to be explored
+                    let queue = [[startState]]; // Each element is an array representing the path
+                    let visited = new Set(); // Set to track visited states
+
+                    visited.add(startState);
+
+                    while (queue.length > 0) {
+                        let path = queue.shift(); // Get the first path from the queue
+                        let state = path[path.length - 1]; // The last state in the path
+
+                        // If we reached the target state, return the path
+                        if (state === targetState) {
+                            return path
+                            //return path;
+                        }
+
+                        // Explore neighbors
+                        for (let neighbor of stateGraph[state]) {
+                            if (!visited.has(neighbor)) {
+                                visited.add(neighbor);
+                                queue.push([...path, neighbor]); // Add new path to the queue
+                            }
+                        }
+                    }
+
+                    return null; // No path found
+                }
+
+
+
+
+
+                //Cookies
+                // Set a cookie with a specific name, value, and expiration days
+                function setCookie(name, value, days) {
+                    const date = new Date();
+                    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000)); // Expiration date
+                    const expires = "expires=" + date.toUTCString();
+                    document.cookie = name + "=" + value + ";" + expires + ";path=/";
+                }
+
+                // Get the value of a specific cookie by name
+                function getCookie(name) {
+                    const nameEq = name + "=";
+                    const decodedCookies = decodeURIComponent(document.cookie);
+                    const cookiesArr = decodedCookies.split(';');
+                    for (let i = 0; i < cookiesArr.length; i++) {
+                        let cookie = cookiesArr[i].trim();
+                        if (cookie.indexOf(nameEq) === 0) {
+                            return cookie.substring(nameEq.length, cookie.length);
+                        }
+                    }
+                    return "";
+                }
+
+                // Check if a cookie exists
+                function checkCookie(name) {
+                    const cookie = getCookie(name);
+                    return cookie !== "";
+                }
+
+
+
+
+
+
+
+
+                /*
+                <h2>Congratulations!</h2>
+                    <p>You guessed the correct state!</p>
+                    <p>It took you: <span id="totalGuesses"></span> this time!</p>
+                    <p>Average # of gueses: <span id="avgNumOfGuesses"></span></p>
+                    <p>You have played <span id="timesPlayed"></span>  times</p>
+                    */
+
+                //Modal
+
+
+                // Function to show the modal
+                function showModal() {
+                    document.getElementById("totalGuesses").textContent = count;
+                    averageNumOfGuesses = allTimeScore / timesPlayed;
+                    document.getElementById("avgNumOfGuesses").textContent = Math.floor(averageNumOfGuesses);
+                    document.getElementById("timesPlayed").textContent = timesPlayed;
+                    //document.getElementById("previousAttempts").textContent = attempts.join(", ");
+                    modal.style.display = "block";
+                }
+
+                // Close modal when 'X' is clicked
+                closeModal.addEventListener("click", () => {
+                    modal.style.display = "none";
+                });
+
+                // Close modal when clicking outside of it
+                window.addEventListener("click", (event) => {
+                    if (event.target === modal) {
+                        modal.style.display = "none";
+                    }
+                });
+
+            })
+            .catch(err => {
+                console.error("Failed to load game:", err);
+            });
+
+
+
         //Cookies yummy
 
 
 
 
         //List of game ids played
-        if (checkCookie('gameIdsPlayed')) {
-            let tempGameIdsPlayed = getCookie('gameIdsPlayed');
-            gameIdsPlayed = new Array(tempGameIdsPlayed.length + 1);
-            for (i = 0; i < gameIdsPlayed.length; i++) {
-                gameIdsPlayed[i] = tempGameIdsPlayed[i];
-            }
-        } else {
-            gameIdsPlayed = new Array(1);
-        }
-        if (checkCookie('timesPlayed')) {
-            timesPlayed = getCookie('timesPlayed');
-        }
-        if (checkCookie('allTimeScore')) {
-            allTimeScore = getCookie('allTimeScore');
-        }
-        //if (checkCookie('hasPlayedToday')) {
-        //  hasPlayedToday = getCookie('hasPlayedToday');
-        //}
-        if (checkCookie('lastGameIdPlayed')) {
-            lastGameIdPlayed = getCookie('lastGameIdPlayed');
-        }
-        if (gameIdsPlayed.includes(gameId)) {
-            hasPlayedToday = true;
-            console.log("Already played! GameId: " + gameId);
-        } else {
-            hasPlayedToday = false;
-        }
-        if (hasPlayedToday) {
-            guessedCorectly = true;
-            showModal();
-            //goto stats screen
-        }
-        //Last game guesses 
-
-        if (checkCookie('lastGameGuesses') && hasPlayedToday) {
-            let raw = getCookie("lastGameGuesses");
-            let parsedGuesses = raw ? JSON.parse(raw) : [];
-            fillLastGameGuesses(parsedGuesses);
-        } else {
-            lastGameGuesses = [];
-        }
-
-
-        // Attach event listeners to each state path
-        document.querySelectorAll("path").forEach(state => {
-            state.addEventListener("click", () => {
-
-                const stateId = state.getAttribute("id");
-                const stateName = state.getAttribute("data-name") || stateId;
-
-                if (!guessedCorectly && !hasPlayedToday) {
-                    if (state.getAttribute("style") == "stroke-width:0.97063118000000004;fill:#f9f9f9") {
-                        count = count + 1;
-                        const shortestPathSize = findShortestPath(stateId, correctState);
-                        let pathCount = shortestPathSize.length - 1;
-                        if (shortestPathSize) {
-                            console.log(`Shortest path from ${stateId} to ${correctState}: ${pathCount})`);
-                        } else {
-                            console.log(`No path found from ${stateId} to ${correctState}.`);
-                        }
-
-                        //CORRECT
-                        if (stateId == correctState) {
-                            state.style = "stroke-width:0.97063118000000004;fill:#0f03fc";
-                            guessedCorectly = true;
-                            document.getElementById("result").textContent = `Congratulations! You got the correct state: ${stateName}`
-                            document.getElementById("count").textContent = `It took you ${count} guesses`;
-
-                            allTimeScore = Number(allTimeScore) + count;
-                            setCookie('allTimeScore', allTimeScore, 7);
-                            timesPlayed++;
-                            setCookie('timesPlayed', timesPlayed, 7);
-                            document.getElementById("played").textContent = `You have played ${timesPlayed} times`
-                            lastGameIdPlayed = gameId;
-                            setCookie('lastGameIdPlayed', lastGameIdPlayed, 7);
-                            hasPlayedToday = true;
-                            setCookie('hasPlayedToday', hasPlayedToday, 7);
-
-
-                            //gameIdsPlayed.push(gameId);
-                            gameIdsPlayed[gameIdsPlayed.length] = gameId;
-                            setCookie('gameIdsPlayed', gameIdsPlayed, 7);
-
-                            lastGameGuesses.push({ state: stateId, guessNum: count, pathCount: pathCount})
-
-                            console.log("What am I saving?", lastGameGuesses);
-                            console.log("As JSON:", JSON.stringify(lastGameGuesses));
-
-
-                            setCookie("lastGameGuesses", JSON.stringify(lastGameGuesses), 7);
-
-                            showModal();
-                            //showModal(10,[1,5,7]);
-                        } else {
-                            if (pathCount <= 1) {
-                                //Next to
-                                state.style = "stroke-width:0.97063118000000004;fill:#fc0303";
-                                lastGameGuesses.push({ state: stateId, guessNum: count, pathCount: pathCount})
-                            } else if (pathCount <= 3) {
-                                //Within 3
-                                state.style = "stroke-width:0.97063118000000004;fill:#fc8c03";
-                                lastGameGuesses.push({ state: stateId, guessNum: count, pathCount: pathCount})
-                            } else if (pathCount <= 5) {
-                                //Within 5
-                                state.style = "stroke-width:0.97063118000000004;fill:#fcd303";
-                                lastGameGuesses.push({ state: stateId, guessNum: count, pathCount: pathCount})
-                            } else if (pathCount <= 7) {
-
-                                state.style = "stroke-width:0.97063118000000004;fill:#e9f542"
-                                lastGameGuesses.push({ state: stateId, guessNum: count, pathCount: pathCount})
-                            } else {
-                                //Within more than 5
-                                state.style = "stroke-width:0.97063118000000004;fill:#f0ff6e";
-                                lastGameGuesses.push({ state: stateId, guessNum: count, pathCount: pathCount})
-                            }
-                            document.getElementById("result").textContent = `You clicked: ${stateName}`;
-                            document.getElementById("count").textContent = `Guesses: ${count}`;
-                        }
-                    } else {
-                        document.getElementById("result").textContent = `You've already guessed that state!`;
-                    }
-                } else {
-
-                }
-            });
-            state.addEventListener("mousemove", () => {
-                const stateName = state.getAttribute("data-name") || state.getAttribute("id");
-                const tooltip = document.getElementById("tooltip");
-
-                // Set tooltip text and position
-                tooltip.textContent = stateName;
-                tooltip.style.left = `${event.pageX + 10}px`;  // Position slightly to the right of the mouse
-                tooltip.style.top = `${event.pageY - tooltip.offsetHeight - 10}px`;  // Position above the mouse
-                tooltip.style.display = 'block';
-            })
-        });
 
 
 
-        function fillLastGameGuesses(array) {
-            //lastGameGuesses.push({ state: stateId, guessNum: count, pathCount: pathCount })
-            // Get the default selected state from the SVG
-            array.forEach(element => {
-                const stID = element.state;
-                const guessNumbered = element.guessNum;
-                const pathCounty = element.pathCount;
-                //const stylesese = element.get("style");
-                //let tempStyle = "stroke-width:0.97063118000000004;fill:" + 
-
-                if (pathCounty < 1) {
-                    //let tempStyle = "stroke-width:0.97063118000000004;fill:" + "#fc0303";
-                    document.getElementById(stID).style.fill = "#0f03fc";
-                } else if (pathCounty <= 1) {
-                    //Next to
-                    //let tempStyle = "stroke-width:0.97063118000000004;fill:" + "#fc0303";
-                    document.getElementById(stID).style.fill = "#fc0303";
-                } else if (pathCounty <= 3) {
-                    //Within 3
-                    //let tempStyle = "stroke-width:0.97063118000000004;fill:" + "#fc8c03";
-                    document.getElementById(stID).style.fill = "#fc8c03";
-                } else if (pathCounty <= 5) {
-                    //Within 5
-                    //let tempStyle = "stroke-width:0.97063118000000004;fill:" + "#fcd303";
-                    document.getElementById(stID).style.fill = "#fcd303";
-                } else if (pathCounty <= 7) {
-                    //let tempStyle = "stroke-width:0.97063118000000004;fill:" + "#e9f542";
-                    document.getElementById(stID).style.fill = "#e9f542";
-                } else {
-                    //More than 7
-                    //let tempStyle = "stroke-width:0.97063118000000004;fill:" + "#f0ff6e";
-                    document.getElementById(stID).style.fill = "#f0ff6e";
-                }
-                
-            });
-        }
-
-
-
-
-        // Simplified adjacency list for the 50 U.S. states (only neighboring states listed)
-        const stateGraph = {
-            'AL': ['MS', 'TN', 'GA', 'FL'],
-            'AK': ['WA'],
-            'AZ': ['CA', 'NV', 'UT', 'CO'],
-            'AR': ['MO', 'TN', 'MS', 'LA', 'TX', 'OK'],
-            'CA': ['OR', 'NV', 'AZ'],
-            'CO': ['WY', 'NE', 'KS', 'MO', 'OK', 'AZ', 'NM'],
-            'CT': ['NY', 'MA', 'RI'],
-            'DE': ['MD', 'PA', 'NJ'],
-            'FL': ['AL', 'GA'],
-            'GA': ['AL', 'FL', 'SC', 'TN', 'NC'],
-            'HI': ['CA'],
-            'ID': ['WA', 'OR', 'NV', 'UT', 'WY'],
-            'IL': ['WI', 'IA', 'MO', 'KY', 'IN'],
-            'IN': ['MI', 'OH', 'KY', 'IL'],
-            'IA': ['MN', 'WI', 'IL', 'MO', 'NE'],
-            'KS': ['NE', 'MO', 'OK', 'CO'],
-            'KY': ['IN', 'OH', 'WV', 'VA', 'TN', 'MO'],
-            'LA': ['TX', 'AR', 'MS'],
-            'ME': ['NH'],
-            'MD': ['DE', 'PA', 'VA'],
-            'MA': ['NH', 'RI', 'CT', 'NY'],
-            'MI': ['WI', 'IN', 'OH'],
-            'MN': ['ND', 'WI', 'IA', 'SD'],
-            'MS': ['AL', 'LA', 'AR', 'TN'],
-            'MO': ['IA', 'NE', 'KS', 'OK', 'AR', 'KY', 'IL'],
-            'MT': ['ND', 'WY', 'ID'],
-            'NE': ['SD', 'IA', 'MO', 'KS', 'CO', 'WY'],
-            'NV': ['OR', 'ID', 'UT', 'AZ', 'CA'],
-            'NH': ['ME', 'VT', 'MA'],
-            'NJ': ['PA', 'DE', 'NY'],
-            'NM': ['CO', 'AZ', 'TX', 'OK'],
-            'NY': ['PA', 'NJ', 'CT', 'MA', 'VT'],
-            'NC': ['VA', 'SC', 'GA', 'TN'],
-            'ND': ['SD', 'MT', 'MN'],
-            'OH': ['IN', 'KY', 'WV', 'PA', 'MI'],
-            'OK': ['TX', 'NM', 'CO', 'KS', 'MO', 'AR'],
-            'OR': ['WA', 'ID', 'NV', 'CA'],
-            'PA': ['NY', 'NJ', 'DE', 'MD', 'WV', 'OH'],
-            'RI': ['CT', 'MA'],
-            'SC': ['NC', 'GA'],
-            'SD': ['ND', 'MN', 'IA', 'NE', 'WY'],
-            'TN': ['KY', 'VA', 'NC', 'GA', 'AL', 'MS', 'AR'],
-            'TX': ['NM', 'OK', 'AR', 'LA'],
-            'UT': ['ID', 'CO', 'AZ', 'NV'],
-            'VT': ['NH', 'MA', 'NY'],
-            'VA': ['MD', 'NC', 'TN', 'KY', 'WV'],
-            'WA': ['OR', 'ID'],
-            'WV': ['PA', 'MD', 'VA', 'KY', 'OH'],
-            'WI': ['MN', 'IA', 'IL', 'MI'],
-            'WY': ['MT', 'SD', 'NE', 'CO', 'UT', 'ID'],
-        };
-
-        // Function to perform BFS and find the shortest path
-        function findShortestPath(startState, targetState) {
-            // Queue to hold the states to be explored
-            let queue = [[startState]]; // Each element is an array representing the path
-            let visited = new Set(); // Set to track visited states
-
-            visited.add(startState);
-
-            while (queue.length > 0) {
-                let path = queue.shift(); // Get the first path from the queue
-                let state = path[path.length - 1]; // The last state in the path
-
-                // If we reached the target state, return the path
-                if (state === targetState) {
-                    return path
-                    //return path;
-                }
-
-                // Explore neighbors
-                for (let neighbor of stateGraph[state]) {
-                    if (!visited.has(neighbor)) {
-                        visited.add(neighbor);
-                        queue.push([...path, neighbor]); // Add new path to the queue
-                    }
-                }
-            }
-
-            return null; // No path found
-        }
-
-
-
-
-
-        //Cookies
-        // Set a cookie with a specific name, value, and expiration days
-        function setCookie(name, value, days) {
-            const date = new Date();
-            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000)); // Expiration date
-            const expires = "expires=" + date.toUTCString();
-            document.cookie = name + "=" + value + ";" + expires + ";path=/";
-        }
-
-        // Get the value of a specific cookie by name
-        function getCookie(name) {
-            const nameEq = name + "=";
-            const decodedCookies = decodeURIComponent(document.cookie);
-            const cookiesArr = decodedCookies.split(';');
-            for (let i = 0; i < cookiesArr.length; i++) {
-                let cookie = cookiesArr[i].trim();
-                if (cookie.indexOf(nameEq) === 0) {
-                    return cookie.substring(nameEq.length, cookie.length);
-                }
-            }
-            return "";
-        }
-
-        // Check if a cookie exists
-        function checkCookie(name) {
-            const cookie = getCookie(name);
-            return cookie !== "";
-        }
-
-
-
-
-
-
-
-
-        /*
-        <h2>Congratulations!</h2>
-            <p>You guessed the correct state!</p>
-            <p>It took you: <span id="totalGuesses"></span> this time!</p>
-            <p>Average # of gueses: <span id="avgNumOfGuesses"></span></p>
-            <p>You have played <span id="timesPlayed"></span>  times</p>
-            */
-
-        //Modal
-
-
-        // Function to show the modal
-        function showModal() {
-            document.getElementById("totalGuesses").textContent = count;
-            averageNumOfGuesses = allTimeScore / timesPlayed;
-            document.getElementById("avgNumOfGuesses").textContent = averageNumOfGuesses;
-            document.getElementById("timesPlayed").textContent = timesPlayed;
-            //document.getElementById("previousAttempts").textContent = attempts.join(", ");
-            modal.style.display = "block";
-        }
-
-        // Close modal when 'X' is clicked
-        closeModal.addEventListener("click", () => {
-            modal.style.display = "none";
-        });
-
-        // Close modal when clicking outside of it
-        window.addEventListener("click", (event) => {
-            if (event.target === modal) {
-                modal.style.display = "none";
-            }
-        });
 
     </script>
 
