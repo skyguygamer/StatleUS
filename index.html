@@ -227,9 +227,6 @@
 
 
     <script>
-        document.getElementById("resetButton").addEventListener("click", function () {
-            location.reload(); // This reloads the current page
-        });
 
 
 
@@ -265,7 +262,7 @@
         let correctState = 'MA';
         let gameId = 0;
 
-        fetch("https://statele-backend.onrender.com/game")
+        fetch("https://3yxrtbfx73.execute-api.us-east-1.amazonaws.com/game")
             .then(res => res.json())
             .then(data => {
                 gameId = Number(data.id);
@@ -366,7 +363,7 @@
 
 
                                 //CORRECT
-                                fetch("https://statele-backend.onrender.com/guess", {
+                                fetch("https://3yxrtbfx73.execute-api.us-east-1.amazonaws.com/guess", {
                                     method: "POST",
                                     headers: { "Content-Type": "application/json" },
                                     body: JSON.stringify({
