@@ -23,8 +23,14 @@
 
 
 
-    <h1>Interactive US Map</h1>
-    <p>Click a state to see which one you selected.</p>
+    <h1>US Statle</h1>
+    <h3>Game: <span id="gameId"></span></h3>
+
+
+    <p>
+        <span id="question"></span>
+    </p>
+
     <div id="tooltip"
         style="position: absolute; background: #f9f9f9; padding: 5px; border: 1px solid #ccc; border-radius: 4px; display: none; pointer-events: none;">
     </div>
@@ -225,8 +231,11 @@
     <p id="played"></p>
     <!--<button id="resetButton">Reset</button>-->
 
+    <p id="response"></p>
+
 
     <script>
+        const apiLink = "https://xgxlfps3fk.execute-api.us-east-1.amazonaws.com";
 
 
 
@@ -256,21 +265,22 @@
 
 
 
-
-
+        let question;
+        let response;
 
         let correctState = 'MA';
         let gameId = 0;
 
-        fetch("https://3yxrtbfx73.execute-api.us-east-1.amazonaws.com/game")
+        fetch(apiLink + "/game")
             .then(res => res.json())
             .then(data => {
                 gameId = Number(data.id);
+                document.getElementById("gameId").textContent = gameId;
                 console.log("Loaded game:", gameId);
                 a = data.a;
-
-
-
+                question = data.question;
+                document.getElementById("question").innerHTML = question;
+                response = data.response;
 
                 if (checkCookie('gameIdsPlayed')) {
                     const raw = getCookie('gameIdsPlayed');
@@ -300,7 +310,7 @@
                     lastGameIdPlayed = getCookie('lastGameIdPlayed');
                 }
 
-                
+
 
 
                 console.log("Gameids played ", gameIdsPlayed);
@@ -325,10 +335,13 @@
 
                 if (hasPlayedToday) {
                     guessedCorectly = true;
+                    if (response) {
+                        document.getElementById("response").innerHTML = response;
+                    }
                     showModal();
                     //goto stats screen
                 }
-            
+
 
 
                 // Attach event listeners to each state path
@@ -350,12 +363,12 @@
                                     console.log(`No path found from ${stateId} to ${a}.`);
                                     console.log(`Not correct!`);
                                 }
-/*
-                                //******
-                                ********
-                                FIX NEED TO ADD SHORTEST PATH SIZE FOUND INTO THE BACKEND
-                                OR I COULD JUST MAKE IT SO THE ANSWER IS PASSED WITH THE ID
-*/
+                                /*
+                                                                //******
+                                                                ********
+                                                                FIX NEED TO ADD SHORTEST PATH SIZE FOUND INTO THE BACKEND
+                                                                OR I COULD JUST MAKE IT SO THE ANSWER IS PASSED WITH THE ID
+                                */
 
 
 
@@ -363,7 +376,7 @@
 
 
                                 //CORRECT
-                                fetch("https://3yxrtbfx73.execute-api.us-east-1.amazonaws.com/guess", {
+                                fetch(apiLink + "/guess", {
                                     method: "POST",
                                     headers: { "Content-Type": "application/json" },
                                     body: JSON.stringify({
@@ -384,6 +397,10 @@
                                             document.getElementById("result").textContent = `Congratulations! You got the correct state: ${stateName}`
                                             document.getElementById("count").textContent = `It took you ${count} guesses`;
 
+
+                                            if (response) {
+                                                document.getElementById("response").innerHTML = response;
+                                            }
                                             allTimeScore = Number(allTimeScore) + count;
                                             setCookie('allTimeScore', allTimeScore, 7);
                                             timesPlayed++;
